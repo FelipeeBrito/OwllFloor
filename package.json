@@ -1,0 +1,25 @@
+{
+  "name": "owllfloor",
+  "version": "0.1.0",
+  "description": "OwllFloor — an AI dev team you can watch working",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Felipe Brito",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "watch": "tsx src/cli/watch.ts",
+    "simulate": "tsx scripts/simulate.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

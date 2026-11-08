@@ -1,0 +1,21 @@
+# Dependências e builds
+node_modules/
+dist/
+coverage/
+
+# Eventos gerados pelos hooks (são locais de cada máquina)
+logs/
+
+# Configurações pessoais do Claude Code (as do projeto ficam em .claude/settings.json)
+.claude/settings.local.json
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+
+# Variáveis de ambiente (o OF não usa API, mas por segurança)
+.env
+.env.*
