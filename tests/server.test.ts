@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { parseServerMessage, type SnapshotMessage } from '../src/domain/protocol.js';
@@ -9,7 +9,8 @@ import { startServer, type RunningServer } from '../src/server/server.js';
 
 /**
  * Teste de integração: sobe o servidor de verdade numa porta livre (port 0),
- * com arquivo de eventos e pasta pública temporários.
+ * com arquivo de eventos e pasta pública temporários (modo 'static', sem Vite).
+ * O modo Vite é testado em server-vite.test.ts.
  */
 
 interface HttpResult {
@@ -67,13 +68,7 @@ beforeEach(async () => {
   writeFileSync(join(dir, 'segredo.html'), 'fora da pasta pública');
   writeFileSync(eventsFile, eventLine(sessionStarted));
 
-  server = await startServer({
-    port: 0,
-    eventsFile,
-    publicDir,
-    clientEntry: resolve('web', 'src', 'app.ts'),
-    intervalMs: 20,
-  });
+  server = await startServer({ port: 0, eventsFile, frontend: { kind: 'static', dir: publicDir }, intervalMs: 20 });
 });
 
 afterEach(async () => {
@@ -129,13 +124,6 @@ describe('servidor HTTP', () => {
     expect(res.headers['content-type']).toBe('text/css; charset=utf-8');
   });
 
-  it('compila /app.js em memória', async () => {
-    const res = await http(server.port, '/app.js');
-    expect(res.status).toBe(200);
-    expect(res.headers['content-type']).toBe('text/javascript; charset=utf-8');
-    expect(res.body).toContain('/ws');
-  }, 15000);
-
   it('HEAD devolve só os cabeçalhos', async () => {
     const res = await http(server.port, '/', { method: 'HEAD' });
     expect(res.status).toBe(200);
@@ -164,21 +152,6 @@ describe('servidor HTTP', () => {
     expect((await http(server.port, '/..%2fsegredo.html')).status).toBe(404);
   });
 
-  it('responde 500 em texto puro se a página não compilar', async () => {
-    await server.close();
-    const broken = join(dir, 'quebrado.ts');
-    writeFileSync(broken, 'const = ;');
-    server = await startServer({ port: 0, eventsFile, publicDir: join(dir, 'public'), clientEntry: broken });
-    const original = console.error;
-    console.error = () => {};
-    try {
-      const res = await http(server.port, '/app.js');
-      expect(res.status).toBe(500);
-      expect(res.headers['content-type']).toBe('text/plain; charset=utf-8');
-    } finally {
-      console.error = original;
-    }
-  }, 15000);
 });
 
 describe('servidor WebSocket', () => {
@@ -251,6 +224,6 @@ describe('servidor WebSocket', () => {
     await server.close();
     await closed;
     // Reabre para o afterEach poder fechar sem erro.
-    server = await startServer({ port: 0, eventsFile, publicDir: join(dir, 'public'), clientEntry: 'x.ts' });
+    server = await startServer({ port: 0, eventsFile, frontend: { kind: 'static', dir: join(dir, 'public') } });
   });
 });

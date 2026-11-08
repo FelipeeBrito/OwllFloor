@@ -1,32 +1,39 @@
-import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { eventsFilePath } from '../infra/paths.js';
-import { readServerConfig } from './config.js';
+import { readServerConfig, type ServerConfig } from './config.js';
 import { openBrowser } from './open-browser.js';
-import { startServer, type RunningServer } from './server.js';
+import { startServer, type FrontendOptions, type RunningServer } from './server.js';
 
 /**
- * `npm run dev` — sobe o escritório no navegador.
- * Um único processo: lê os eventos, serve a página e transmite o estado (ADR 0001).
+ * `npm run dev` — sobe o escritório no navegador, com o Vite compilando a página na hora.
+ * `npm start`   — mesma coisa, mas servindo a página já compilada por `npm run build`.
+ * Um único processo: lê os eventos, serve a página e transmite o estado (ADR 0001 e 0002).
  */
 async function main(): Promise<void> {
-  const config = readServerConfig(process.env);
+  const config = readServerConfig(process.env, process.argv);
   const eventsFile = eventsFilePath();
-  const root = process.cwd();
 
-  const server = await startServer({
-    port: config.port,
-    eventsFile,
-    publicDir: resolve(root, 'web', 'public'),
-    clientEntry: resolve(root, 'web', 'src', 'app.ts'),
-  });
+  const server = await startServer({ port: config.port, eventsFile, frontend: frontendFor(config) });
 
   const url = `http://${config.host}:${server.port}/`;
-  console.log(`OwllFloor rodando em ${url}`);
+  console.log(`OwllFloor rodando em ${url} (${config.mode === 'vite' ? 'desenvolvimento' : 'página compilada'})`);
   console.log(`Lendo eventos de: ${eventsFile}`);
   console.log('Ctrl+C para sair.');
   if (config.openBrowser) openBrowser(url);
 
   handleShutdown(server);
+}
+
+function frontendFor(config: ServerConfig): FrontendOptions {
+  const root = process.cwd();
+  if (config.mode === 'vite') return { kind: 'vite', configFile: resolve(root, 'vite.config.ts') };
+
+  const dir = resolve(root, 'dist', 'web');
+  if (!existsSync(join(dir, 'index.html'))) {
+    throw new Error('Página compilada não encontrada em dist/web. Rode "npm run build" antes de "npm start".');
+  }
+  return { kind: 'static', dir };
 }
 
 function handleShutdown(server: RunningServer): void {

@@ -3,7 +3,7 @@ import { DEFAULT_PORT, readServerConfig } from '../src/server/config.js';
 
 describe('readServerConfig', () => {
   it('usa 127.0.0.1, porta 4747 e abre o navegador por padrão', () => {
-    expect(readServerConfig({})).toEqual({ host: '127.0.0.1', port: 4747, openBrowser: true });
+    expect(readServerConfig({})).toEqual({ host: '127.0.0.1', port: 4747, openBrowser: true, mode: 'vite' });
     expect(DEFAULT_PORT).toBe(4747);
   });
 
@@ -25,6 +25,11 @@ describe('readServerConfig', () => {
     expect(readServerConfig({ OF_NO_OPEN: '1' }).openBrowser).toBe(false);
     expect(readServerConfig({ OF_NO_OPEN: '0' }).openBrowser).toBe(true);
     expect(readServerConfig({ OF_NO_OPEN: 'true' }).openBrowser).toBe(true);
+  });
+
+  it('--static troca o modo para servir a página compilada', () => {
+    expect(readServerConfig({}, ['node', 'main.ts', '--static']).mode).toBe('static');
+    expect(readServerConfig({}, ['node', 'main.ts']).mode).toBe('vite');
   });
 
   it('host é sempre 127.0.0.1, mesmo com variáveis estranhas', () => {

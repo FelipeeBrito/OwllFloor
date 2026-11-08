@@ -1,7 +1,15 @@
+/**
+ * - 'vite': desenvolvimento (npm run dev). O Vite compila a página na hora e recarrega
+ *   o navegador sozinho quando um arquivo muda.
+ * - 'static': serve a página já compilada por `npm run build` (npm start).
+ */
+export type FrontendMode = 'vite' | 'static';
+
 export interface ServerConfig {
   host: string;
   port: number;
   openBrowser: boolean;
+  mode: FrontendMode;
 }
 
 export const DEFAULT_PORT = 4747;
@@ -11,13 +19,17 @@ export const SERVER_HOST = '127.0.0.1';
 
 /**
  * Lê a configuração das variáveis de ambiente.
- * Recebe `env` por parâmetro (em vez de ler process.env direto) para ser testável.
+ * Recebe `env` e `argv` por parâmetro (em vez de ler process.env/argv direto) para ser testável.
  */
-export function readServerConfig(env: Record<string, string | undefined>): ServerConfig {
+export function readServerConfig(
+  env: Record<string, string | undefined>,
+  argv: readonly string[] = [],
+): ServerConfig {
   return {
     host: SERVER_HOST,
     port: parsePort(env.OF_PORT),
     openBrowser: env.OF_NO_OPEN !== '1',
+    mode: argv.includes('--static') ? 'static' : 'vite',
   };
 }
 

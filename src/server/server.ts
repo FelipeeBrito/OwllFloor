@@ -2,21 +2,26 @@ import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
-import { build } from 'esbuild';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { EventFileWatcher } from '../infra/event-file-watcher.js';
 import { SERVER_HOST } from './config.js';
 import { OfficeHub } from './office-hub.js';
 import { isAllowedHost, isAllowedOrigin, securityHeaders } from './security.js';
 import { contentTypeFor, resolvePublicPath } from './static-files.js';
+import { startViteFrontend, VITE_HMR_PATH, type ViteFrontend } from './vite-frontend.js';
+
+/**
+ * De onde vem a página:
+ * - 'vite': desenvolvimento; o Vite compila o TypeScript na hora (vite.config.ts).
+ * - 'static': arquivos prontos numa pasta (saída do `npm run build`, ou pasta de teste).
+ */
+export type FrontendOptions = { kind: 'vite'; configFile: string } | { kind: 'static'; dir: string };
 
 export interface StartServerOptions {
   /** 0 = o sistema escolhe uma porta livre (usado nos testes). */
   port: number;
   eventsFile: string;
-  publicDir: string;
-  /** Arquivo TypeScript da página, compilado na hora para /app.js. */
-  clientEntry: string;
+  frontend: FrontendOptions;
   intervalMs?: number;
 }
 
@@ -29,7 +34,7 @@ export interface RunningServer {
 const MAX_CLIENT_PAYLOAD = 1024;
 
 /**
- * Borda do sistema: junta HTTP, WebSocket, esbuild e o leitor de eventos.
+ * Borda do sistema: junta HTTP, WebSocket, Vite e o leitor de eventos.
  * As regras ficam nos módulos puros (hub, security, static-files); aqui só ligamos os fios.
  */
 export async function startServer(options: StartServerOptions): Promise<RunningServer> {
@@ -37,28 +42,45 @@ export async function startServer(options: StartServerOptions): Promise<RunningS
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_CLIENT_PAYLOAD });
   // A porta real só é conhecida depois do listen (por causa do port 0).
   let port = options.port;
+  let vite: ViteFrontend | null = null;
 
   const server = createServer((req, res) => {
-    handleHttp(req, res, port, options).catch((error: unknown) => {
+    handleHttp(req, res, port, options.frontend, vite).catch((error: unknown) => {
       console.error('[OF] erro ao responder requisição:', error);
       if (!res.headersSent) sendText(res, 500, 'Erro interno', port);
       else res.destroy();
     });
   });
 
+  // Toda conexão WebSocket passa pela mesma checagem de Host e Origin, inclusive a do Vite.
   server.on('upgrade', (req, socket, head) => {
-    if (!canUpgrade(req, port)) return rejectUpgrade(socket);
-    wss.handleUpgrade(req, socket, head, (ws) => attachClient(ws, hub));
+    if (!isAllowedHost(req.headers.host, port) || !isAllowedOrigin(req.headers.origin, port)) {
+      return rejectUpgrade(socket);
+    }
+    const path = pathnameOf(req.url ?? '');
+    if (path === '/ws') return wss.handleUpgrade(req, socket, head, (ws) => attachClient(ws, hub));
+    // O Vite registra o próprio ouvinte de 'upgrade' para este caminho; aqui só deixamos passar.
+    if (vite !== null && path === VITE_HMR_PATH) return;
+    rejectUpgrade(socket);
   });
 
-  await listen(server, options.port);
+  if (options.frontend.kind === 'vite') {
+    vite = await startViteFrontend(server, options.frontend.configFile);
+  }
+
+  try {
+    await listen(server, options.port);
+  } catch (error) {
+    await vite?.close();
+    throw error;
+  }
   port = (server.address() as AddressInfo).port;
 
   const watcher = new EventFileWatcher(options.eventsFile, options.intervalMs);
   watcher.subscribe((event) => hub.apply(event));
   watcher.start(true);
 
-  return { port, close: () => closeAll(server, wss, watcher) };
+  return { port, close: () => closeAll(server, wss, watcher, vite) };
 }
 
 function listen(server: ReturnType<typeof createServer>, port: number): Promise<void> {
@@ -75,7 +97,8 @@ async function handleHttp(
   req: IncomingMessage,
   res: ServerResponse,
   port: number,
-  options: StartServerOptions,
+  frontend: FrontendOptions,
+  vite: ViteFrontend | null,
 ): Promise<void> {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');
@@ -83,37 +106,13 @@ async function handleHttp(
   }
   if (!isAllowedHost(req.headers.host, port)) return sendText(res, 403, 'Host não permitido', port);
 
-  const url = req.url ?? '/';
-  if (pathnameOf(url) === '/app.js') return serveClientBundle(req, res, port, options.clientEntry);
-  return servePublicFile(req, res, port, options.publicDir, url);
-}
-
-/** Compila a página em memória a cada pedido: basta F5 para ver mudanças no TypeScript. */
-async function serveClientBundle(
-  req: IncomingMessage,
-  res: ServerResponse,
-  port: number,
-  clientEntry: string,
-): Promise<void> {
-  let code: string;
-  try {
-    const result = await build({
-      entryPoints: [clientEntry],
-      bundle: true,
-      write: false,
-      format: 'esm',
-      platform: 'browser',
-      target: 'es2022',
-      sourcemap: 'inline',
-      logLevel: 'silent',
-    });
-    code = result.outputFiles[0]?.text ?? '';
-  } catch (error) {
-    // Detalhes só no terminal; o navegador recebe uma mensagem genérica.
-    console.error('[OF] erro ao compilar a página:', error);
-    return sendText(res, 500, 'Erro ao compilar app.js (veja o terminal do servidor)', port);
+  if (vite !== null) {
+    // Os cabeçalhos de segurança vão antes; o Vite acrescenta os dele (tipo, cache).
+    for (const [name, value] of Object.entries(securityHeaders(port))) res.setHeader(name, value);
+    return vite.handle(req, res, () => sendText(res, 404, 'Não encontrado', port));
   }
-  sendBody(req, res, port, 'text/javascript; charset=utf-8', Buffer.from(code, 'utf8'));
+  if (frontend.kind === 'static') return servePublicFile(req, res, port, frontend.dir, req.url ?? '/');
+  return sendText(res, 404, 'Não encontrado', port);
 }
 
 async function servePublicFile(
@@ -160,14 +159,6 @@ function pathnameOf(url: string): string {
   return cut === -1 ? url : url.slice(0, cut);
 }
 
-function canUpgrade(req: IncomingMessage, port: number): boolean {
-  return (
-    pathnameOf(req.url ?? '') === '/ws' &&
-    isAllowedHost(req.headers.host, port) &&
-    isAllowedOrigin(req.headers.origin, port)
-  );
-}
-
 function rejectUpgrade(socket: Duplex): void {
   // Destrói só depois de enviar a resposta; destruir antes cortaria o 403.
   socket.once('finish', () => socket.destroy());
@@ -186,10 +177,12 @@ async function closeAll(
   server: ReturnType<typeof createServer>,
   wss: WebSocketServer,
   watcher: EventFileWatcher,
+  vite: ViteFrontend | null,
 ): Promise<void> {
   watcher.stop();
   for (const client of wss.clients) client.terminate();
   await new Promise<void>((resolve) => wss.close(() => resolve()));
+  await vite?.close();
   await new Promise<void>((resolve) => {
     server.close(() => resolve());
     // Conexões HTTP keep-alive manteriam o close() esperando para sempre.

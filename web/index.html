@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OwllFloor</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+    <!-- Sem script ou estilo inline: a CSP do servidor só permite arquivos do próprio site. -->
+    <script type="module" src="/src/app.ts"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>OwllFloor</h1>
+      <p id="office-title" class="office-title">aguardando o servidor…</p>
+      <p id="connection" class="connection" data-status="connecting">conectando…</p>
+    </header>
+
+    <main>
+      <!-- O Phaser desenha o escritório em pixel art dentro desta div. -->
+      <div id="office" class="office" aria-label="Escritório das corujas em pixel art"></div>
+
+      <p id="last-event" class="last-event" aria-live="polite"></p>
+
+      <div class="panels">
+        <section aria-labelledby="desks-title">
+          <h2 id="desks-title" class="section-title">Mesas</h2>
+          <ul id="desks" class="desks"></ul>
+        </section>
+
+        <section aria-labelledby="handoffs-title">
+          <h2 id="handoffs-title" class="section-title">Últimas entregas</h2>
+          <ol id="handoffs" class="handoffs"></ol>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

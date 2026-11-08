@@ -12,5 +12,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "scripts", "tests", ".claude/hooks"]
+  "include": ["src", "scripts", "tests", ".claude/hooks", "vite.config.ts", "vitest.config.ts"]
 }

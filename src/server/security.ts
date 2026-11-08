@@ -35,7 +35,8 @@ export function securityHeaders(port: number): Record<string, string> {
     "default-src 'none'",
     "script-src 'self'",
     "style-src 'self'",
-    "img-src 'self'",
+    // data: = texturas internas do Phaser (embutidas como imagem base64 na biblioteca).
+    "img-src 'self' data:",
     `connect-src ${wsSources}`,
     "base-uri 'none'",
     "form-action 'none'",
