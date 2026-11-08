@@ -12,15 +12,15 @@ O OwllFloor não chama nenhuma API de IA; ele só observa e mostra.
 
 ## Status
 
-🚧 **Etapa 2 concluída — o escritório no navegador.** Um servidor local lê os eventos e
-transmite o estado por WebSocket para uma página simples. A versão em pixel art (Phaser) é a
-próxima etapa.
+🚧 **Etapa 3 concluída — o escritório em pixel art.** As corujas aparecem no navegador
+(Phaser), sentam, digitam, levantam e levam o trabalho até a próxima mesa. Quando o QA
+devolve a entrega para o Engenheiro, o retrabalho aparece em destaque (em vermelho).
 
 | Etapa | Entrega | Status |
 |---|---|---|
 | 1 | Subagentes, hooks, contrato de eventos, reducer e escritório no terminal | ✅ |
 | 2 | Servidor WebSocket transmitindo os eventos | ✅ |
-| 3 | Escritório visual em Phaser com as corujas | ⏳ |
+| 3 | Escritório visual em Phaser com as corujas (Vite + pixel art) | ✅ |
 | 4 | Docker, CI e vídeo demo | ⏳ |
 
 ## Como funciona
@@ -35,7 +35,7 @@ flowchart LR
     W --> R[officeReducer]
     R --> T[Terminal<br/>npm run watch]
     R --> S[Servidor local<br/>npm run dev]
-    S -->|WebSocket<br/>office.snapshot| B[Página no navegador<br/>pixel art na Etapa 3]
+    S -->|WebSocket<br/>office.snapshot| B[Escritório em pixel art<br/>Phaser no navegador]
 ```
 
 **Fluxo do expediente:** Arquiteto → Engenheiro → Segurança → QA → DevOps.
@@ -43,17 +43,13 @@ Se o QA reprovar, a entrega volta para o Engenheiro (retrabalho) e passa de novo
 
 ## Rodando
 
-Pré-requisitos: Node 20+ e Claude Code.
+Pré-requisitos: Node 22.12+ e Claude Code.
 
 ```bash
 git clone https://github.com/FelipeeBrito/OwllFloor.git
 cd OwllFloor
 npm install
 ```
-
-> Se o `npm install` avisar que o script de instalação (`postinstall`) do `esbuild` foi
-> bloqueado e o `npm run dev` der erro ao compilar a página, libere com
-> `npm install-scripts approve esbuild` e rode `npm install` de novo.
 
 **Ver o escritório no navegador com uma simulação** (não usa o Claude):
 
@@ -91,7 +87,29 @@ No PowerShell a variável continua definida até fechar a janela; para desfazer,
 `Remove-Item Env:OF_PORT`.
 
 O servidor escuta só em `127.0.0.1` (não aparece para outras máquinas da rede).
-Mudanças na página aparecem com F5; mudanças no servidor pedem reiniciar o `npm run dev`.
+Mudanças na página aparecem sozinhas ao salvar (o Vite recarrega o navegador); mudanças no
+servidor pedem reiniciar o `npm run dev`.
+
+**Página compilada (sem o Vite):**
+
+```bash
+npm run build   # gera dist/web
+npm start       # serve dist/web em http://127.0.0.1:4747
+```
+
+### O que você vê no escritório
+
+| Na tela | Evento que causou |
+|---|---|
+| Coruja pula para a cadeira e digita, com a tarefa num balão | `agent.started` |
+| Coruja levanta, volta para a frente da mesa e ganha um ✔ verde | `agent.finished` |
+| Coruja leva um papel pelo corredor até a próxima | entrega (`handoff`) entre duas corujas |
+| Faixa vermelha, papel vermelho, tela tremendo, balão vermelho | retrabalho: QA devolveu ao Engenheiro |
+| "z z" sobre a coruja | coruja livre |
+| Luzes apagadas e placa "FECHADO" | `session.ended` |
+
+Cada coruja tem o acessório do seu papel: **Arquiteto** (óculos e planta), **Engenheiro**
+(teclado), **Segurança** (escudo), **QA** (lupa) e **DevOps** (capacete).
 
 **Ver o escritório no terminal com uma simulação:**
 
@@ -130,6 +148,10 @@ criar uma função que formata datas em pt-BR"*. As corujas começam a trabalhar
   (`office.snapshot`). Se a conexão cair, a página reconecta sozinha e já recebe a tela certa.
   Segurança básica: só `127.0.0.1`, checagem de `Host` e `Origin`, CSP restritiva e texto dos
   eventos exibido só com `textContent`.
+- **Vite + Phaser** ([ADR 0002](docs/adr/0002-vite-e-phaser.md)): o Vite roda *dentro* do
+  servidor do OF (mesma porta, mesmas checagens de segurança). A pixel art é desenhada em
+  código (cada letra é um pixel), sem imagens de terceiros. Uma *coreografia* pura compara a
+  foto anterior com a nova e decide as animações; o Phaser só as executa.
 - **Hook sem dependências e que nunca falha**: o escritório é visual; ele jamais pode
   atrapalhar o trabalho do Claude Code.
 
@@ -147,10 +169,14 @@ src/
   domain/          # regras puras: papéis, eventos, reducer
   infra/           # leitura do arquivo de eventos
   cli/             # escritório em modo texto
-  server/          # servidor local: HTTP + WebSocket (npm run dev)
+  server/          # servidor local: HTTP + WebSocket + Vite (npm run dev)
 web/
-  public/          # index.html e style.css
-  src/             # TypeScript da página (compilado na hora pelo servidor)
+  index.html       # página (o Vite começa por aqui)
+  public/          # style.css e favicon, servidos como estão
+  src/             # TypeScript da página: conexão e painel em HTML
+    office/        # escritório em Phaser: pixel art, planta, coreografia, corujas
+vite.config.ts     # configuração da página (pastas liberadas, build)
+vitest.config.ts   # configuração dos testes
 docs/adr/          # decisões de arquitetura
 scripts/simulate.ts
 tests/             # Vitest
@@ -159,7 +185,7 @@ tests/             # Vitest
 ## Testes
 
 ```bash
-npm test          # 157 testes
+npm test          # 230 testes
 npm run typecheck
 ```
 
@@ -167,12 +193,12 @@ npm run typecheck
 
 Coisas que sabemos que podem melhorar, mas que hoje têm gravidade **baixa**. Cada item diz
 por que é baixo, quando passaria a valer a pena corrigir e quanto custa corrigir.
-Detalhes em `docs/adr/0001-servidor-websocket.md`.
+Detalhes em `docs/adr/0001-servidor-websocket.md` e `docs/adr/0002-vite-e-phaser.md`.
 
-- **B1 — outros sites podem incluir o `/app.js`** (gravidade: baixa).
+- **B1 — outros sites podem incluir o JavaScript da página** (gravidade: baixa).
   Falta o cabeçalho `Cross-Origin-Resource-Policy: same-origin` e recusar pedidos com
   `Sec-Fetch-Site: cross-site`.
-  *Por que é baixa:* o `app.js` é o código público da página, sem nenhum dado. Os dados vêm
+  *Por que é baixa:* o JavaScript é o código público da página, sem nenhum dado. Os dados vêm
   pelo WebSocket, que já confere de qual site veio a conexão (`Origin`).
   *Corrigir quando:* o JavaScript passar a conter dados sensíveis.
   *Custo:* um cabeçalho e um `if`.
@@ -195,10 +221,11 @@ Detalhes em `docs/adr/0001-servidor-websocket.md`.
   *Por que é baixa:* não acontece no uso normal, em que o arquivo só cresce.
   *Corrigir quando:* isso começar a aparecer na prática.
   *Custo:* comparar também a identidade do arquivo (ex.: data de criação), não só o tamanho.
-- **`postinstall` do esbuild bloqueado** (gravidade: baixa).
-  Versões novas do npm podem bloquear o script de instalação do `esbuild`.
-  *Por que é baixa:* não é falha de segurança; só impede a página de compilar.
-  *Como resolver:* rodar `npm install-scripts approve esbuild` e `npm install` de novo.
+- **Pacote da página grande (~1,4 MB)** (gravidade: baixa).
+  Quase tudo é o Phaser.
+  *Por que é baixa:* a página roda na própria máquina; carrega uma vez e em menos de um segundo.
+  *Corrigir quando:* a página for publicada na internet.
+  *Custo:* separar o Phaser num arquivo próprio para o navegador guardar em cache.
 
 ## Licença
 

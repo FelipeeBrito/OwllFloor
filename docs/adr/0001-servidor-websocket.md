@@ -1,6 +1,6 @@
 # ADR 0001 — Servidor local com WebSocket e página web simples
 
-- Status: aceito
+- Status: aceito (a decisão 3, esbuild em memória, foi substituída pelo Vite no [ADR 0002](0002-vite-e-phaser.md))
 - Data: 2026-11-08
 - Etapa: 2 (antes do Phaser)
 
