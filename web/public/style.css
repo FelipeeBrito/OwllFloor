@@ -1,0 +1,150 @@
+/* Página simples da Etapa 2. Na Etapa 3 o escritório vira Phaser. */
+:root {
+  --bg: #1d1b26;
+  --panel: #2a2736;
+  --text: #ece8f5;
+  --muted: #a39dba;
+  --idle: #6b6780;
+  --working: #f2b84b;
+  --done: #5cc98a;
+  --rework: #ef6f6c;
+  --offline: #ef6f6c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: var(--panel);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.office-title {
+  margin: 0;
+  color: var(--muted);
+}
+
+.connection {
+  margin: 0 0 0 auto;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid currentColor;
+}
+
+.connection[data-status='connecting'] {
+  color: var(--working);
+}
+
+.connection[data-status='connected'] {
+  color: var(--done);
+}
+
+.connection[data-status='disconnected'] {
+  color: var(--offline);
+}
+
+main {
+  padding: 1rem 1.5rem 2rem;
+}
+
+.last-event {
+  min-height: 1.5em;
+  color: var(--muted);
+}
+
+.section-title {
+  font-size: 1rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.desks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.desk {
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--panel);
+  border-left: 6px solid var(--idle);
+}
+
+.desk[data-status='working'] {
+  border-left-color: var(--working);
+}
+
+.desk[data-status='done'] {
+  border-left-color: var(--done);
+}
+
+.desk-name {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.desk-accessory,
+.desk-task {
+  margin: 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.desk-status {
+  margin: 0.5rem 0;
+  font-weight: 600;
+}
+
+.handoffs {
+  padding: 0;
+  list-style: none;
+}
+
+.handoff {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 4px solid var(--done);
+  margin-bottom: 0.4rem;
+  background: var(--panel);
+}
+
+/* Retrabalho (QA devolveu ao Engenheiro) em destaque. */
+.handoff[data-kind='rework'] {
+  border-left-color: var(--rework);
+  color: var(--rework);
+  font-weight: 600;
+}
+
+.handoff.empty {
+  border-left-color: var(--idle);
+  color: var(--muted);
+}
+
+.handoff-time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
