@@ -1,4 +1,4 @@
-/* Página simples da Etapa 2. Na Etapa 3 o escritório vira Phaser. */
+/* Etapa 3: o escritório é desenhado pelo Phaser em #office; o resto é o painel de texto. */
 :root {
   --bg: #1d1b26;
   --panel: #2a2736;
@@ -62,7 +62,29 @@ body {
 }
 
 main {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 1rem 1.5rem 2rem;
+}
+
+/* O Phaser coloca o <canvas> aqui e o redimensiona para caber (proporção 16:9). */
+.office {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.office canvas {
+  /* Pixel art nítida ao ampliar (sem borrar). */
+  image-rendering: pixelated;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
 }
 
 .last-event {
@@ -79,7 +101,7 @@ main {
 
 .desks {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 1rem;
   padding: 0;
   list-style: none;

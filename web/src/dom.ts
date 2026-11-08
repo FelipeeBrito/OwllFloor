@@ -8,7 +8,7 @@ import { connectionLabel, type ConnectionStatus, type DeskView, type HandoffView
  * createElement e dataset — nunca innerHTML, insertAdjacentHTML ou estilo inline.
  */
 
-function byId(id: string): HTMLElement {
+export function byId(id: string): HTMLElement {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Elemento #${id} não encontrado no index.html`);
   return element;
