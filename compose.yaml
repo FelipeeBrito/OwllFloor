@@ -1,0 +1,23 @@
+# docker compose up demo     → escritório com o expediente de exemplo em repetição
+# docker compose up office   → escritório lendo os eventos reais de ./logs
+# Depois abra http://127.0.0.1:4747
+#
+# A porta é publicada só em 127.0.0.1: o escritório não fica visível na rede.
+# Use sempre a mesma porta dos dois lados (4747:4747): o servidor confere o endereço
+# que o navegador usou e recusa qualquer outro.
+services:
+  demo:
+    build: .
+    image: owllfloor
+    ports:
+      - "127.0.0.1:4747:4747"
+
+  office:
+    build: .
+    image: owllfloor
+    command: ["node_modules/.bin/tsx", "src/server/main.ts", "--static"]
+    ports:
+      - "127.0.0.1:4747:4747"
+    volumes:
+      # Só leitura: o container observa os eventos que os hooks do Claude Code gravam no seu computador.
+      - ./logs:/app/logs:ro
