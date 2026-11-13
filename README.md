@@ -2,6 +2,10 @@
 
 **An AI dev team you can watch working.**
 
+[![CI](https://github.com/FelipeeBrito/OwllFloor/actions/workflows/ci.yml/badge.svg)](https://github.com/FelipeeBrito/OwllFloor/actions/workflows/ci.yml)
+
+![Escritório do OwllFloor: cinco corujas em pixel art, a do QA trabalhando na mesa](docs/img/escritorio.png)
+
 O OwllFloor é um escritório em pixel art onde cada coruja é um subagente do Claude Code:
 **Arquiteto, Engenheiro, Segurança, QA e DevOps**. Quando você pede uma funcionalidade ao
 Claude Code, ele delega o trabalho entre as corujas — e você vê cada uma sentar na mesa,
@@ -12,16 +16,17 @@ O OwllFloor não chama nenhuma API de IA; ele só observa e mostra.
 
 ## Status
 
-🚧 **Etapa 3 concluída — o escritório em pixel art.** As corujas aparecem no navegador
-(Phaser), sentam, digitam, levantam e levam o trabalho até a próxima mesa. Quando o QA
-devolve a entrega para o Engenheiro, o retrabalho aparece em destaque (em vermelho).
+✅ **Etapa 4 concluída — demo, Docker e CI.** O escritório roda com um comando só
+(`npm run demo` ou `docker compose up demo`), e cada commit passa por tipos, testes, build
+e construção da imagem no GitHub Actions. Falta gravar o vídeo de demonstração.
 
 | Etapa | Entrega | Status |
 |---|---|---|
 | 1 | Subagentes, hooks, contrato de eventos, reducer e escritório no terminal | ✅ |
 | 2 | Servidor WebSocket transmitindo os eventos | ✅ |
 | 3 | Escritório visual em Phaser com as corujas (Vite + pixel art) | ✅ |
-| 4 | Docker, CI e vídeo demo | ⏳ |
+| 4 | Modo demo, Docker e CI | ✅ |
+| 5 | Vídeo de demonstração e próximas ideias (replay de expedientes, gasto por coruja) | ⏳ |
 
 ## Como funciona
 
@@ -50,6 +55,21 @@ git clone https://github.com/FelipeeBrito/OwllFloor.git
 cd OwllFloor
 npm install
 ```
+
+**Jeito mais rápido: modo demo** (não usa o Claude; um expediente de exemplo em repetição):
+
+```bash
+npm run demo
+```
+
+**Com Docker**, sem instalar o Node:
+
+```bash
+docker compose up demo      # expediente de exemplo
+docker compose up office    # eventos reais da pasta ./logs
+```
+
+Depois abra http://127.0.0.1:4747.
 
 **Ver o escritório no navegador com uma simulação** (não usa o Claude):
 
@@ -170,6 +190,7 @@ src/
   infra/           # leitura do arquivo de eventos
   cli/             # escritório em modo texto
   server/          # servidor local: HTTP + WebSocket + Vite (npm run dev)
+  demo/            # expediente de exemplo e modo demo
 web/
   index.html       # página (o Vite começa por aqui)
   public/          # style.css e favicon, servidos como estão
@@ -178,6 +199,9 @@ web/
 vite.config.ts     # configuração da página (pastas liberadas, build)
 vitest.config.ts   # configuração dos testes
 docs/adr/          # decisões de arquitetura
+Dockerfile         # imagem em duas fases (compila, depois roda)
+compose.yaml       # serviços demo e office
+.github/workflows/ # CI: tipos, testes, build e imagem
 scripts/simulate.ts
 tests/             # Vitest
 ```
@@ -185,9 +209,12 @@ tests/             # Vitest
 ## Testes
 
 ```bash
-npm test          # 230 testes
+npm test          # 237 testes
 npm run typecheck
 ```
+
+A cada push, o GitHub Actions roda os mesmos comandos, o `npm audit` e constrói a imagem Docker
+(`.github/workflows/ci.yml`).
 
 ## Débito técnico conhecido
 

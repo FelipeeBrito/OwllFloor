@@ -28,7 +28,8 @@ e escreva uma `description` curta e clara na chamada (ela aparece no balão da c
 ## Stack
 TypeScript (estrito), Node >= 22.12, Vitest, `ws` (WebSocket), Vite (página, em modo middleware
 dentro do servidor) e Phaser 4 (escritório em pixel art).
-Decisões em `docs/adr/0001-servidor-websocket.md` (Etapa 2) e `docs/adr/0002-vite-e-phaser.md` (Etapa 3).
+Decisões em `docs/adr/0001-servidor-websocket.md` (Etapa 2) `docs/adr/0002-vite-e-phaser.md` (Etapa 3)
+e `docs/adr/0003-docker-ci-demo.md` (Etapa 4).
 
 ## Estrutura
 - `src/domain` — regras puras (eventos, papéis, reducer do escritório). Sem acesso a arquivos ou rede.
@@ -44,6 +45,9 @@ Decisões em `docs/adr/0001-servidor-websocket.md` (Etapa 2) e `docs/adr/0002-vi
 - `web/src/office` — escritório em Phaser. Puros e testados: `layout.ts` (planta), `sprites.ts` (pixel art
   em texto), `choreography.ts` (foto anterior + nova → animações). Phaser: `textures.ts`, `owl.ts`,
   `office-scene.ts`, `game.ts`.
+- `src/demo` — expediente de exemplo (`sample-session.ts`, usado pelo simulate e pelo demo) e o laço do
+  modo demo (`demo-loop.ts`), que grava num arquivo temporário, nunca em `logs/`.
+- `Dockerfile`, `compose.yaml`, `.github/workflows/ci.yml` — container e verificação automática.
 - `vite.config.ts` (página; `server.fs.allow` limita o que o Vite lê) e `vitest.config.ts` (testes).
 - `.claude/hooks/emit-event.mjs` — traduz hooks do Claude Code em eventos do OF.
 - `tests/` — testes Vitest.
@@ -54,6 +58,8 @@ Decisões em `docs/adr/0001-servidor-websocket.md` (Etapa 2) e `docs/adr/0002-vi
 - `npm run dev` — escritório no navegador em http://127.0.0.1:4747 (abre sozinho; recarrega ao salvar)
   - `OF_PORT=4848` muda a porta; `OF_NO_OPEN=1` não abre o navegador; `OF_EVENTS_FILE` muda o arquivo lido
 - `npm run build` / `npm start` — compila a página em `dist/web` / serve a versão compilada
+- `npm run demo` — escritório com o expediente de exemplo em repetição (não lê os eventos reais)
+- `docker compose up demo` / `docker compose up office` — o mesmo em container (demo / eventos de `./logs`)
 - `npm run watch` — escritório no terminal
 - `npm run simulate` — gera um expediente de exemplo, sem usar o Claude
 
