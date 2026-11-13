@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { createDemoEventsFile, startDemoLoop, type DemoLoop } from '../demo/demo-loop.js';
 import { eventsFilePath } from '../infra/paths.js';
 import { readServerConfig, type ServerConfig } from './config.js';
 import { openBrowser } from './open-browser.js';
@@ -8,21 +9,28 @@ import { startServer, type FrontendOptions, type RunningServer } from './server.
 /**
  * `npm run dev` — sobe o escritório no navegador, com o Vite compilando a página na hora.
  * `npm start`   — mesma coisa, mas servindo a página já compilada por `npm run build`.
+ * `npm run demo`  — toca um expediente de exemplo em repetição (não usa o Claude nem os eventos reais).
  * Um único processo: lê os eventos, serve a página e transmite o estado (ADR 0001 e 0002).
  */
 async function main(): Promise<void> {
   const config = readServerConfig(process.env, process.argv);
-  const eventsFile = eventsFilePath();
+  const eventsFile = config.demo ? createDemoEventsFile() : eventsFilePath();
 
-  const server = await startServer({ port: config.port, eventsFile, frontend: frontendFor(config) });
+  const server = await startServer({
+    port: config.port,
+    bindHost: config.bindHost,
+    eventsFile,
+    frontend: frontendFor(config),
+  });
+  const demo = config.demo ? startDemoLoop(eventsFile) : null;
 
   const url = `http://${config.host}:${server.port}/`;
   console.log(`OwllFloor rodando em ${url} (${config.mode === 'vite' ? 'desenvolvimento' : 'página compilada'})`);
-  console.log(`Lendo eventos de: ${eventsFile}`);
+  console.log(demo ? 'Modo demo: expediente de exemplo em repetição.' : `Lendo eventos de: ${eventsFile}`);
   console.log('Ctrl+C para sair.');
   if (config.openBrowser) openBrowser(url);
 
-  handleShutdown(server);
+  handleShutdown(server, demo);
 }
 
 function frontendFor(config: ServerConfig): FrontendOptions {
@@ -36,10 +44,14 @@ function frontendFor(config: ServerConfig): FrontendOptions {
   return { kind: 'static', dir };
 }
 
-function handleShutdown(server: RunningServer): void {
-  process.once('SIGINT', () => {
+function handleShutdown(server: RunningServer, demo: DemoLoop | null): void {
+  const stop = (): void => {
+    demo?.stop();
     server.close().finally(() => process.exit(0));
-  });
+  };
+  process.once('SIGINT', stop);
+  // SIGTERM é o sinal que o `docker stop` envia.
+  process.once('SIGTERM', stop);
 }
 
 function explain(error: unknown): string {

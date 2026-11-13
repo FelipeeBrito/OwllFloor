@@ -3,7 +3,14 @@ import { DEFAULT_PORT, readServerConfig } from '../src/server/config.js';
 
 describe('readServerConfig', () => {
   it('usa 127.0.0.1, porta 4747 e abre o navegador por padrão', () => {
-    expect(readServerConfig({})).toEqual({ host: '127.0.0.1', port: 4747, openBrowser: true, mode: 'vite' });
+    expect(readServerConfig({})).toEqual({
+      host: '127.0.0.1',
+      bindHost: '127.0.0.1',
+      port: 4747,
+      openBrowser: true,
+      mode: 'vite',
+      demo: false,
+    });
     expect(DEFAULT_PORT).toBe(4747);
   });
 
@@ -34,5 +41,17 @@ describe('readServerConfig', () => {
 
   it('host é sempre 127.0.0.1, mesmo com variáveis estranhas', () => {
     expect(readServerConfig({ HOST: '0.0.0.0' }).host).toBe('127.0.0.1');
+  });
+
+  it('só OF_BIND_ALL=1 faz escutar em todas as interfaces (uso em container)', () => {
+    expect(readServerConfig({ OF_BIND_ALL: '1' }).bindHost).toBe('0.0.0.0');
+    expect(readServerConfig({ OF_BIND_ALL: 'true' }).bindHost).toBe('127.0.0.1');
+    expect(readServerConfig({ HOST: '0.0.0.0' }).bindHost).toBe('127.0.0.1');
+    // O endereço aceito no cabeçalho Host não muda.
+    expect(readServerConfig({ OF_BIND_ALL: '1' }).host).toBe('127.0.0.1');
+  });
+
+  it('--demo liga o modo demo', () => {
+    expect(readServerConfig({}, ['node', 'main.ts', '--static', '--demo'])).toMatchObject({ demo: true, mode: 'static' });
   });
 });

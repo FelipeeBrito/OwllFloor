@@ -23,6 +23,8 @@ export interface StartServerOptions {
   eventsFile: string;
   frontend: FrontendOptions;
   intervalMs?: number;
+  /** Onde escutar. Padrão 127.0.0.1; só o container usa outro valor (ADR 0003). */
+  bindHost?: string;
 }
 
 export interface RunningServer {
@@ -69,7 +71,7 @@ export async function startServer(options: StartServerOptions): Promise<RunningS
   }
 
   try {
-    await listen(server, options.port);
+    await listen(server, options.port, options.bindHost ?? SERVER_HOST);
   } catch (error) {
     await vite?.close();
     throw error;
@@ -83,10 +85,10 @@ export async function startServer(options: StartServerOptions): Promise<RunningS
   return { port, close: () => closeAll(server, wss, watcher, vite) };
 }
 
-function listen(server: ReturnType<typeof createServer>, port: number): Promise<void> {
+function listen(server: ReturnType<typeof createServer>, port: number, host: string): Promise<void> {
   return new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, SERVER_HOST, () => {
+    server.listen(port, host, () => {
       server.off('error', reject);
       resolve();
     });
