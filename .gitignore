@@ -19,3 +19,9 @@ desktop.ini
 # Variáveis de ambiente (o OF não usa API, mas por segurança)
 .env
 .env.*
+
+# Artefatos de ferramentas e skills instaladas (não fazem parte do OF)
+.agents/
+graphify-out/
+.graphifyignore
+skills-lock.json
