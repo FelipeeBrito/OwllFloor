@@ -15,6 +15,7 @@
     "start": "tsx src/server/main.ts --static",
     "watch": "tsx src/cli/watch.ts",
     "simulate": "tsx scripts/simulate.ts",
+    "replay": "tsx scripts/replay.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc --noEmit -p web/tsconfig.json",
